@@ -3,10 +3,10 @@ import { X } from 'lucide-react';
 import { db } from '../firebase'; 
 import { collection, addDoc } from 'firebase/firestore'; 
 
-const RegisterModal = ({ isOpen, onClose }) => {
+const RegisterModal = ({ isOpen, onClose, setUserProfile }) => { // 📍 Added setUserProfile prop
   const [formData, setFormData] = useState({
     name: '',
-    bloodGroup: '',
+    bloodGroup: 'O+', // 📍 Defaulted back to O+ for better UX
     phone: '',
     location: ''
   });
@@ -19,22 +19,37 @@ const RegisterModal = ({ isOpen, onClose }) => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
+          // 1. Save to Firebase
           await addDoc(collection(db, "donors"), {
             ...formData,
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             createdAt: new Date()
           });
+
+          // 📍 2. Save to Browser Memory (LocalStorage) for Targeted Alerts
+          localStorage.setItem('userBloodGroup', formData.bloodGroup);
+          localStorage.setItem('userCity', formData.location);
+
+          // 📍 3. Update App State instantly
+          if (setUserProfile) {
+            setUserProfile({
+              bloodGroup: formData.bloodGroup,
+              city: formData.location
+            });
+          }
+
           alert("Hero Registered Successfully!");
           setLoading(false);
           onClose();
         } catch (error) {
+          console.error(error);
           alert("Error saving data.");
           setLoading(false);
         }
       },
       () => {
-        alert("Please enable location to register.");
+        alert("Please enable location to register as a donor.");
         setLoading(false);
       }
     );
@@ -45,28 +60,52 @@ const RegisterModal = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative">
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24} /></button>
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full text-gray-400">
+          <X size={24} />
+        </button>
         <div className="p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Become a Donor</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 tracking-tight">Become a Donor</h2>
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <input type="text" required placeholder="Full Name" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-red-600" onChange={(e) => setFormData({...formData, name: e.target.value})} />
+            <input 
+              type="text" required placeholder="Full Name" 
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-red-600 text-gray-800" 
+              onChange={(e) => setFormData({...formData, name: e.target.value})} 
+            />
+            
             <div className="grid grid-cols-2 gap-4">
-              <select className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}>
+              <select 
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-800 font-medium" 
+                value={formData.bloodGroup}
+                onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
+              >
                 <option>A+</option><option>B+</option><option>O+</option><option>AB+</option>
                 <option>A-</option><option>B-</option><option>O-</option><option>AB-</option>
               </select>
-              {/* 📍 Added maxLength and pattern for clean 10-digit numbers */}
+              
               <input 
                 type="tel" required placeholder="10-Digit Phone" 
                 maxLength="10" pattern="[0-9]{10}"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" 
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-800" 
                 onChange={(e) => setFormData({...formData, phone: e.target.value})} 
               />
             </div>
-            <input type="text" required placeholder="City (e.g. Pune)" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" onChange={(e) => setFormData({...formData, location: e.target.value})} />
-            <button type="submit" disabled={loading} className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 transition disabled:bg-gray-400">
-              {loading ? "Saving..." : "Complete Registration"}
+
+            <input 
+              type="text" required placeholder="City (e.g. Pune)" 
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-gray-800" 
+              onChange={(e) => setFormData({...formData, location: e.target.value})} 
+            />
+
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 transition disabled:bg-gray-400 shadow-lg shadow-red-100 active:scale-95"
+            >
+              {loading ? "Registering..." : "Complete Registration"}
             </button>
+            <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">
+              Your location is used to show nearby requests
+            </p>
           </form>
         </div>
       </div>

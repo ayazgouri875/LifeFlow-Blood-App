@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Droplet, AlertCircle, Search, Trash2 } from 'lucide-react';
 import DonorSearch from './components/DonorSearch';
 import RegisterModal from './components/RegisterModal';
@@ -11,6 +11,13 @@ function App() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false); 
   const [detectedCoords, setDetectedCoords] = useState(null);
+
+  // 📍 NEW: State to store user info for targeted alerts
+  // It checks localStorage so the user is remembered even after a refresh
+  const [userProfile, setUserProfile] = useState({
+    bloodGroup: localStorage.getItem('userBloodGroup') || '',
+    city: localStorage.getItem('userCity') || ''
+  });
 
   const handleNearbySearch = () => {
     if (!navigator.geolocation) {
@@ -26,10 +33,9 @@ function App() {
   };
 
   return (
-    // 🎨 NEW: Deep Slate Background (Dark Mode Style)
     <div className="min-h-screen bg-[#0f172a] text-slate-200 selection:bg-red-500 selection:text-white">
       
-      {/* Navbar - Dark Glass Effect */}
+      {/* Navbar */}
       <nav className="bg-slate-900/80 backdrop-blur-md px-8 py-5 flex justify-between items-center shadow-xl border-b border-slate-800 sticky top-0 z-40">
         <div className="flex items-center gap-2 text-red-500 font-bold text-2xl tracking-tight">
           <Droplet fill="currentColor" size={32} />
@@ -78,9 +84,12 @@ function App() {
         </div>
       </main>
 
-      {/* Live Emergency Feed Section */}
+      {/* 📍 Updated: Live Feed now receives userProfile for Targeted Alerts */}
       <section className="py-12 bg-slate-900/50">
-        <LiveRequestFeed />
+        <LiveRequestFeed 
+          userBloodGroup={userProfile.bloodGroup} 
+          userCity={userProfile.city} 
+        />
       </section>
 
       {/* Donor Search Section */}
@@ -100,8 +109,13 @@ function App() {
         </button>
       </footer>
 
-      {/* Modals */}
-      <RegisterModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {/* 📍 Updated: RegisterModal now receives setUserProfile to update the App state */}
+      <RegisterModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        setUserProfile={setUserProfile}
+      />
+      
       <PostRequestModal isOpen={isRequestModalOpen} onClose={() => setIsRequestModalOpen(false)} />
       <DeleteDonorModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />
     </div>
