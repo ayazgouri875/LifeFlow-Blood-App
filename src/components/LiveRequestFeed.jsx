@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import { Clock, MapPin, Activity, Phone } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, limit, deleteDoc, doc } from 'firebase/firestore';
+import { Clock, MapPin, Activity, Phone, CheckCircle2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns'; // 📍 For real-time relative timing
 
 const LiveRequestFeed = () => {
   const [requests, setRequests] = useState([]);
@@ -14,6 +15,22 @@ const LiveRequestFeed = () => {
     return () => unsubscribe();
   }, []);
 
+  // 📍 Function to let users delete their own request
+  const handleFulfilled = async (requestId, originalPhone) => {
+    const userInput = prompt("To remove this request, please enter the Contact Number used to post it:");
+    
+    if (userInput === originalPhone) {
+      try {
+        await deleteDoc(doc(db, "requests", requestId));
+        alert("Emergency request marked as fulfilled and removed. Thank you!");
+      } catch (error) {
+        alert("Error removing request. Please try again.");
+      }
+    } else if (userInput !== null) {
+      alert("Verification failed. Phone number does not match.");
+    }
+  };
+
   if (requests.length === 0) return null;
 
   return (
@@ -22,7 +39,7 @@ const LiveRequestFeed = () => {
         <div className="bg-red-600 p-2 rounded-lg animate-pulse">
           <Activity className="text-white" size={20} />
         </div>
-        <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Live Emergency Requests</h2>
+        <h2 className="text-2xl font-black text-white uppercase tracking-tight">Live Emergency Requests</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -41,16 +58,28 @@ const LiveRequestFeed = () => {
 
             <div className="flex justify-between items-center mb-6">
               <div className="text-sm font-bold text-gray-400 flex items-center gap-1">
-                <Clock size={14} /> Just now
+                <Clock size={14} /> 
+                {/* 📍 Dynamically calculates time like "2 hours ago" */}
+                {req.createdAt?.toDate ? formatDistanceToNow(req.createdAt.toDate(), { addSuffix: true }) : 'Just now'}
               </div>
               <div className="text-red-600 font-bold text-sm bg-red-50 px-3 py-1 rounded-full">
-                {req.units} Units Required
+                {req.units} Units
               </div>
             </div>
 
-            <a href={`tel:${req.contact}`} className="w-full bg-red-50 text-red-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition group-hover:scale-105">
-              <Phone size={16} /> Contact Family
-            </a>
+            <div className="flex flex-col gap-2">
+              <a href={`tel:${req.contact}`} className="w-full bg-red-50 text-red-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition">
+                <Phone size={16} /> Contact Family
+              </a>
+              
+              {/* 📍 Mark as Fulfilled Button */}
+              <button 
+                onClick={() => handleFulfilled(req.id, req.contact)}
+                className="w-full text-gray-400 hover:text-green-600 py-2 rounded-xl font-bold flex items-center justify-center gap-2 transition text-xs border border-transparent hover:border-green-100 hover:bg-green-50"
+              >
+                <CheckCircle2 size={14} /> Mark as Fulfilled
+              </button>
+            </div>
           </div>
         ))}
       </div>
